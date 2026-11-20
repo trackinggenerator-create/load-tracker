@@ -1,12 +1,20 @@
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { companyName } from "@/lib/company";
+import { companyNameFor } from "@/lib/company";
 import { signOut } from "@/app/login/actions";
+import { CompanyNameEditor } from "./company-name-editor";
 
+/** Company name (with its rename pencil) and the signed-in username. */
 async function Who() {
   const user = await requireUser();
-  return <span className="truncate text-[13px] opacity-80">{user.username}</span>;
+  const name = await companyNameFor(user.id);
+  return (
+    <>
+      <CompanyNameEditor key={name} name={name} />
+      <span className="truncate text-[13px] opacity-80">{user.username}</span>
+    </>
+  );
 }
 
 const tabs = [
@@ -19,10 +27,16 @@ export function BrokerShell({ active, children }: { active: (typeof tabs)[number
   return (
     <>
       <header className="bg-header text-on-header">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 flex-col">
-            <span className="font-black">{companyName()}</span>
-            <Suspense fallback={<span className="text-[13px] opacity-80">&nbsp;</span>}>
+            <Suspense
+              fallback={
+                <>
+                  <span className="font-black">&nbsp;</span>
+                  <span className="text-[13px] opacity-80">&nbsp;</span>
+                </>
+              }
+            >
               <Who />
             </Suspense>
           </div>

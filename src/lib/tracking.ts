@@ -44,6 +44,7 @@ export type PublicLoad = {
 
 type LoadRow = {
   id: string;
+  owner_id: string;
   share_code: string;
   delivered_at: string | null;
   delivery_date: string | null;
@@ -68,7 +69,7 @@ type LoadRow = {
 };
 
 const COLUMNS =
-  "id, share_code, delivered_at, delivery_date, load_number, trailer_number, pickup, delivery, samsara_url, status, expires_at, last_lat, last_lng, last_heading, last_speed_mph, last_address, last_position_at, dest_name, dest_address, dest_lat, dest_lng, last_checked_at";
+  "id, owner_id, share_code, delivered_at, delivery_date, load_number, trailer_number, pickup, delivery, samsara_url, status, expires_at, last_lat, last_lng, last_heading, last_speed_mph, last_address, last_position_at, dest_name, dest_address, dest_lat, dest_lng, last_checked_at";
 
 function toPublic(row: LoadRow): PublicLoad {
   const expired = row.status === "active" && new Date(row.expires_at).getTime() < Date.now();
@@ -109,13 +110,13 @@ export function isStale(id: string, checkedAt: string | null): boolean {
 }
 
 /** Looks up a load by its customer link code. Returns null for codes that don't exist. */
-export async function getPublicLoad(code: string): Promise<{ id: string; load: PublicLoad; stale: boolean } | null> {
+export async function getPublicLoad(code: string): Promise<{ id: string; ownerId: string; load: PublicLoad; stale: boolean } | null> {
   if (!/^[A-Za-z0-9_-]{8,32}$/.test(code)) return null;
   const db = createSupabaseAdminClient();
   const { data } = await db.from("loads").select(COLUMNS).eq("share_code", code).maybeSingle<LoadRow>();
   if (!data) return null;
   const load = toPublic(data);
-  return { id: data.id, load, stale: load.status === "active" && isStale(data.id, data.last_checked_at) };
+  return { id: data.id, ownerId: data.owner_id, load, stale: load.status === "active" && isStale(data.id, data.last_checked_at) };
 }
 
 /** Delivered loads stay on a customer's page for this long, marked Delivered, then drop off. */
@@ -128,10 +129,10 @@ const MAX_READS_PER_VISIT = 4;
  * 24 hours. Returns null for codes that don't exist. Never returns the customer's name, which is the
  * broker's own label.
  */
-export async function getPublicCustomer(code: string): Promise<{ loads: PublicLoad[]; staleIds: string[] } | null> {
+export async function getPublicCustomer(code: string): Promise<{ ownerId: string; loads: PublicLoad[]; staleIds: string[] } | null> {
   if (!/^[A-Za-z0-9_-]{8,32}$/.test(code)) return null;
   const db = createSupabaseAdminClient();
-  const { data: customer } = await db.from("customers").select("id").eq("share_code", code).maybeSingle<{ id: string }>();
+  const { data: customer } = await db.from("customers").select("id, owner_id").eq("share_code", code).maybeSingle<{ id: string; owner_id: string }>();
   if (!customer) return null;
 
   const deliveredSince = new Date(Date.now() - DELIVERED_SHOWN_MS).toISOString();
@@ -152,7 +153,7 @@ export async function getPublicCustomer(code: string): Promise<{ loads: PublicLo
     .filter((r) => r.status === "active" && new Date(r.expires_at).getTime() >= Date.now() && isStale(r.id, r.last_checked_at))
     .map((r) => r.id)
     .slice(0, MAX_READS_PER_VISIT);
-  return { loads, staleIds };
+  return { ownerId: customer.owner_id, loads, staleIds };
 }
 
 /** Reads several loads one at a time, so a customer with many loads doesn't open many browsers at once. */

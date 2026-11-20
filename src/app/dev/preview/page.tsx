@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { companyName } from "@/lib/company";
+import { defaultCompanyName } from "@/lib/company";
+import { TrackingFrame } from "@/components/tracking/tracking-frame";
 import { readSamsaraLink } from "@/lib/samsara";
 import type { PublicLoad } from "@/lib/tracking";
 import { LiveTracker } from "../../t/[code]/live-tracker";
@@ -32,21 +33,10 @@ async function Preview({ searchParams }: { searchParams: Promise<{ link?: string
 
 export default function DevPreview({ searchParams }: PageProps<"/dev/preview">) {
   return (
-    <>
-      <header className="bg-header text-on-header">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3.5">
-          <span className="text-[17px] font-black tracking-tight">{companyName()}</span>
-          <span className="text-[12px] font-semibold tracking-wide uppercase opacity-75">Shipment tracking</span>
-        </div>
-      </header>
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-4 py-5">
-        <Suspense fallback={<p className="text-[14px] text-muted">Reading the Samsara link…</p>}>
-          <Preview searchParams={searchParams as Promise<{ link?: string }>} />
-        </Suspense>
-      </main>
-      <footer className="mx-auto w-full max-w-3xl px-4 pb-6 text-[12px] text-muted">
-        Tracking provided by {companyName()}. Locations update every few minutes.
-      </footer>
-    </>
+    <TrackingFrame company={defaultCompanyName()}>
+      <Suspense fallback={<p className="text-[14px] text-muted">Reading the Samsara link…</p>}>
+        <Preview searchParams={searchParams as Promise<{ link?: string }>} />
+      </Suspense>
+    </TrackingFrame>
   );
 }
