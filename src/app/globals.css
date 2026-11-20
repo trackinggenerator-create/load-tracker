@@ -68,8 +68,11 @@ body {
   color: var(--lt-fg);
 }
 
-a {
-  color: var(--lt-accent);
+/* In the base layer so a link's own color classes (like the gray inactive tab) win. */
+@layer base {
+  a {
+    color: var(--lt-accent);
+  }
 }
 
 .leaflet-container {
