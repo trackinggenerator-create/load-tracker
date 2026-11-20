@@ -1,0 +1,78 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* Brand colors live here only. Neutral navy so it fits any company name. */
+:root {
+  --lt-accent: #1d4ed8;
+  --lt-on-accent: #ffffff;
+  --lt-bg: #f3f5f9;
+  --lt-surface: #ffffff;
+  --lt-surface-2: #e7ebf2;
+  --lt-line: #d5dbe5;
+  --lt-fg: #111827;
+  --lt-muted: #5b6475;
+  --lt-ok: #157347;
+  --lt-ok-bg: #e2f4ea;
+  --lt-warn: #8a5300;
+  --lt-warn-bg: #fdf0d8;
+  --lt-bad: #b42318;
+  --lt-bad-bg: #fde7e5;
+  --lt-header: #0f1b33;
+  --lt-on-header: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --lt-accent: #7aa2ff;
+    --lt-on-accent: #0b1220;
+    --lt-bg: #0b1220;
+    --lt-surface: #131c2e;
+    --lt-surface-2: #1b2640;
+    --lt-line: #2a3654;
+    --lt-fg: #e7ecf5;
+    --lt-muted: #9aa6bd;
+    --lt-ok: #6fd39a;
+    --lt-ok-bg: #12301f;
+    --lt-warn: #f2b661;
+    --lt-warn-bg: #33250e;
+    --lt-bad: #ff8a80;
+    --lt-bad-bg: #3a1714;
+    --lt-header: #070d19;
+    --lt-on-header: #e7ecf5;
+  }
+}
+
+@theme inline {
+  --color-accent: var(--lt-accent);
+  --color-on-accent: var(--lt-on-accent);
+  --color-bg: var(--lt-bg);
+  --color-surface: var(--lt-surface);
+  --color-surface-2: var(--lt-surface-2);
+  --color-line: var(--lt-line);
+  --color-fg: var(--lt-fg);
+  --color-muted: var(--lt-muted);
+  --color-ok: var(--lt-ok);
+  --color-ok-bg: var(--lt-ok-bg);
+  --color-warn: var(--lt-warn);
+  --color-warn-bg: var(--lt-warn-bg);
+  --color-bad: var(--lt-bad);
+  --color-bad-bg: var(--lt-bad-bg);
+  --color-header: var(--lt-header);
+  --color-on-header: var(--lt-on-header);
+  --font-sans: var(--font-inter);
+  --radius-card: 14px;
+}
+
+body {
+  background: var(--lt-bg);
+  color: var(--lt-fg);
+}
+
+a {
+  color: var(--lt-accent);
+}
+
+.leaflet-container {
+  font: inherit;
+  background: var(--lt-surface-2);
+}
