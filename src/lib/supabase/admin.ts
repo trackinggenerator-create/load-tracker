@@ -4,7 +4,7 @@ import { supabasePublicEnv } from "./env";
 
 /**
  * Server-only Supabase client with the secret key. It skips Row Level Security, so use it only
- * for the public tracking page (which returns safe fields) and for saving Samsara readings.
+ * for the public tracking page (which returns safe fields) and for saving tracking readings.
  */
 export function createSupabaseAdminClient() {
   const { url } = supabasePublicEnv();

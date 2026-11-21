@@ -47,13 +47,13 @@ export function AddLoadForm() {
       {state.status === "error" && <p role="alert" className={ui.alert}>{state.message}</p>}
       {state.status === "ok" && <p className={ui.ok}>{state.message}</p>}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="samsara_url" className={ui.label}>Carrier&apos;s Samsara link</label>
+        <label htmlFor="samsara_url" className={ui.label}>Carrier&apos;s tracking link (Samsara or Monarch)</label>
         <input
           id="samsara_url"
           name="samsara_url"
           type="url"
           inputMode="url"
-          placeholder="https://cloud.samsara.com/o/…/fleet/viewer/…"
+          placeholder="Paste the Samsara or Monarch link"
           defaultValue={v.samsara_url ?? ""}
           className={ui.input}
         />
@@ -80,7 +80,7 @@ export function AddLoadForm() {
         ))}
       </div>
       <button type="submit" disabled={pending} className={ui.primary}>
-        {pending ? "Checking the Samsara link…" : "Add load and make customer link"}
+        {pending ? "Checking the tracking link…" : "Add load and make customer link"}
       </button>
     </form>
   );

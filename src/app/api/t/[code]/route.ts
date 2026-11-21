@@ -1,7 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { getPublicLoad, refreshLoad } from "@/lib/tracking";
 
-// Reading Samsara opens a hidden browser after the answer is sent, which can take a while.
+// Reading the tracking link opens a hidden browser after the answer is sent, which can take a while.
 export const maxDuration = 60;
 
 /** Latest safe tracking data for a customer link. Polled by the tracking page. */

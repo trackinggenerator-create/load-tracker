@@ -1,9 +1,9 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { readSamsaraLink, SamsaraError } from "@/lib/samsara";
+import { readTrackingLink, TrackingLinkError } from "@/lib/trackers";
 
 /**
- * Samsara is read again a random 5 to 10 minutes after the last read, and only while someone has a
+^ * The tracking link is read again a random 5 to 10 minutes after the last read, and only while someone has a
  * tracking page open. The gap is picked from the load's id and the last read time, so it's the same
  * for every visitor (no extra database column needed) but different every time.
  */
@@ -25,7 +25,7 @@ export function nextCheckAt(id: string, checkedAt: string | null): number {
   return new Date(checkedAt).getTime() + MIN_GAP_MS + hashToUnit(`${id}|${checkedAt}`) * (MAX_GAP_MS - MIN_GAP_MS);
 }
 
-/** What a customer is allowed to see. No carrier, no driver, no speed, no Samsara link. */
+/** What a customer is allowed to see. No carrier, no driver, no speed, no carrier tracking link. */
 export type PublicLoad = {
   /** The load's own tracking code: a stable key for lists. */
   key: string;
@@ -121,7 +121,7 @@ export async function getPublicLoad(code: string): Promise<{ id: string; ownerId
 
 /** Delivered loads stay on a customer's page for this long, marked Delivered, then drop off. */
 const DELIVERED_SHOWN_MS = 24 * 60 * 60 * 1000;
-/** At most this many Samsara reads per visit, one after another; the rest wait for the next visit. */
+/** At most this many tracking-link reads per visit, one after another; the rest wait for the next visit. */
 const MAX_READS_PER_VISIT = 4;
 
 /**
@@ -162,9 +162,9 @@ export async function refreshLoadsInTurn(ids: string[]): Promise<void> {
 }
 
 /**
- * Opens the load's Samsara link and saves the new position.
+ * Opens the load's tracking link (Samsara or Monarch) and saves the new position.
  * Unless `force` is set (the broker's Refresh button), it waits for the random 5 to 10 minute gap,
- * and marks the load as being checked first so two visitors at once don't both open Samsara.
+ * and marks the load as being checked first so two visitors at once don't both open it.
  */
 export async function refreshLoad(id: string, { force = false } = {}): Promise<{ ok: boolean; error?: string }> {
   const db = createSupabaseAdminClient();
@@ -180,7 +180,7 @@ export async function refreshLoad(id: string, { force = false } = {}): Promise<{
   if (!claimed) return { ok: true }; // Someone else just checked it, or it's no longer active.
 
   try {
-    const r = await readSamsaraLink(claimed.samsara_url);
+    const r = await readTrackingLink(claimed.samsara_url);
     await db
       .from("loads")
       .update({
@@ -200,8 +200,8 @@ export async function refreshLoad(id: string, { force = false } = {}): Promise<{
       .eq("id", id);
     return { ok: true };
   } catch (e) {
-    const message = e instanceof SamsaraError ? e.message : "Couldn't read the Samsara link. Try again in a minute.";
-    if (!(e instanceof SamsaraError)) console.error("Samsara read failed", e);
+    const message = e instanceof TrackingLinkError ? e.message : "Couldn't read the tracking link. Try again in a minute.";
+    if (!(e instanceof TrackingLinkError)) console.error("Tracking link read failed", e);
     await db.from("loads").update({ last_error: message }).eq("id", id);
     return { ok: false, error: message };
   }

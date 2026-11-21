@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { normalizeShareLink } from "@/lib/samsara";
+import { normalizeTrackingLink } from "@/lib/trackers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { refreshLoad } from "@/lib/tracking";
 
@@ -57,13 +57,13 @@ async function resolveCustomer(supabase: Db, name: string): Promise<{ id: string
 
 export type EditState = { status: "idle" | "error" | "ok"; message?: string };
 
-/** Saves changes to a load's details. A new Samsara link is read right away. */
+/** Saves changes to a load's details. A new tracking link is read right away. */
 export async function updateLoad(id: string, _prev: EditState, form: FormData): Promise<EditState> {
   await requireUser();
   const values = readValues(form);
   if (!values.load_number) return { status: "error", message: "Enter the load number." };
-  const link = normalizeShareLink(values.samsara_url);
-  if (!link) return { status: "error", message: "That isn't a Samsara share link." };
+  const link = normalizeTrackingLink(values.samsara_url);
+  if (!link) return { status: "error", message: "That isn't a Samsara or Monarch tracking link." };
   const deliveryDate = parseDay(values.delivery_date);
   if (deliveryDate === false) return { status: "error", message: "Pick a valid delivery date, or leave it blank." };
 
@@ -116,9 +116,9 @@ export async function addLoad(_prev: AddState, form: FormData): Promise<AddState
   await requireUser();
   const values = readValues(form);
   if (!values.load_number) return { status: "error", message: "Enter the load number.", values };
-  const link = normalizeShareLink(values.samsara_url);
+  const link = normalizeTrackingLink(values.samsara_url);
   if (!link) {
-    return { status: "error", message: "Paste the carrier's Samsara link. It looks like https://cloud.samsara.com/o/…/fleet/viewer/…", values };
+    return { status: "error", message: "Paste the carrier's Samsara or Monarch tracking link.", values };
   }
   const deliveryDate = parseDay(values.delivery_date);
   if (deliveryDate === false) return { status: "error", message: "Pick a valid delivery date, or leave it blank.", values };

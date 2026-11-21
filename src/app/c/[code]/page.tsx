@@ -7,7 +7,7 @@ import { getPublicCustomer, refreshLoadsInTurn } from "@/lib/tracking";
 import { TrackingFrame } from "@/components/tracking/tracking-frame";
 import { CustomerTracker } from "./customer-tracker";
 
-// Up to a few Samsara reads, one after another, after the page is sent.
+// Up to a few tracking-link reads, one after another, after the page is sent.
 export const maxDuration = 60;
 export const metadata: Metadata = { title: "Your shipments" };
 

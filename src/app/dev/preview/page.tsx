@@ -2,19 +2,19 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { defaultCompanyName } from "@/lib/company";
 import { TrackingFrame } from "@/components/tracking/tracking-frame";
-import { readSamsaraLink } from "@/lib/samsara";
+import { readTrackingLink } from "@/lib/trackers";
 import type { PublicLoad } from "@/lib/tracking";
 import { LiveTracker } from "../../t/[code]/live-tracker";
 
 /**
- * Only on this PC (never on the live site): shows the customer page for any Samsara link
+ * Only on this PC (never on the live site): shows the customer page for any Samsara or Monarch link
  * without saving anything. Open /dev/preview?link=<samsara share link>
  */
 async function Preview({ searchParams }: { searchParams: Promise<{ link?: string }> }) {
   if (process.env.NODE_ENV !== "development") notFound();
   const { link } = await searchParams;
-  if (!link) return <p>Add ?link=&lt;Samsara share link&gt; to the address.</p>;
-  const r = await readSamsaraLink(link);
+  if (!link) return <p>Add ?link=&lt;Samsara or Monarch link&gt; to the address.</p>;
+  const r = await readTrackingLink(link);
   const load: PublicLoad = {
     key: "preview",
     deliveredAt: null,
@@ -34,7 +34,7 @@ async function Preview({ searchParams }: { searchParams: Promise<{ link?: string
 export default function DevPreview({ searchParams }: PageProps<"/dev/preview">) {
   return (
     <TrackingFrame company={defaultCompanyName()}>
-      <Suspense fallback={<p className="text-[14px] text-muted">Reading the Samsara link…</p>}>
+      <Suspense fallback={<p className="text-[14px] text-muted">Reading the tracking link…</p>}>
         <Preview searchParams={searchParams as Promise<{ link?: string }>} />
       </Suspense>
     </TrackingFrame>

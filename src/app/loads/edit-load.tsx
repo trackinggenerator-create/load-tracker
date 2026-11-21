@@ -70,7 +70,7 @@ export function EditLoad({ load }: { load: EditableLoad }) {
         ))}
       </div>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={`samsara_url-${load.id}`} className={ui.label}>Carrier&apos;s Samsara link</label>
+        <label htmlFor={`samsara_url-${load.id}`} className={ui.label}>Carrier&apos;s tracking link (Samsara or Monarch)</label>
         <input id={`samsara_url-${load.id}`} name="samsara_url" type="url" inputMode="url" defaultValue={load.samsara_url} className={ui.input} />
         <span className="text-[13px] text-muted">Change this only if the carrier sent a new link. The customer link stays the same.</span>
       </div>

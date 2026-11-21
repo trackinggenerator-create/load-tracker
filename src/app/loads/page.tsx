@@ -14,7 +14,7 @@ import { EditLoad } from "./edit-load";
 import { deleteLoad, refreshNow, setDelivered } from "./actions";
 
 export const metadata: Metadata = { title: "My loads" };
-// Adding a load opens the Samsara link in a hidden browser, which can take a while.
+// Adding a load opens the tracking link in a hidden browser, which can take a while.
 export const maxDuration = 60;
 
 type Row = {
@@ -164,7 +164,7 @@ async function LoadList() {
       </datalist>
       {rows.length === 0 ? (
         <p className={`${ui.card} p-6 text-center text-[14px] text-muted`}>
-          No loads yet. Add one with the carrier&apos;s Samsara link to get a customer tracking link.
+          No loads yet. Add one with the carrier&apos;s Samsara or Monarch link to get a customer tracking link.
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
