@@ -21,9 +21,16 @@ export const viewport: Viewport = {
   ],
 };
 
+/** Applies a saved Light/Dark choice before the page paints, so it never flashes the other theme. */
+const themeScript = `try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    // The theme script may set data-theme before React loads, so React shouldn't warn about it.
+    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="flex min-h-full flex-col font-sans text-[15px] leading-normal">{children}</body>
     </html>
   );

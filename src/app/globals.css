@@ -19,10 +19,15 @@
   --lt-bad-bg: #fde7e5;
   --lt-header: #0f1b33;
   --lt-on-header: #ffffff;
+  color-scheme: light;
 }
 
+/*
+  Dark colors. Used when the visitor picks Dark with the sun/moon button (data-theme="dark"),
+  or when their device is set to dark and they haven't picked Light. Keep both blocks the same.
+*/
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --lt-accent: #7aa2ff;
     --lt-on-accent: #0b1220;
     --lt-bg: #0b1220;
@@ -39,7 +44,28 @@
     --lt-bad-bg: #3a1714;
     --lt-header: #070d19;
     --lt-on-header: #e7ecf5;
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --lt-accent: #7aa2ff;
+  --lt-on-accent: #0b1220;
+  --lt-bg: #0b1220;
+  --lt-surface: #131c2e;
+  --lt-surface-2: #1b2640;
+  --lt-line: #2a3654;
+  --lt-fg: #e7ecf5;
+  --lt-muted: #9aa6bd;
+  --lt-ok: #6fd39a;
+  --lt-ok-bg: #12301f;
+  --lt-warn: #f2b661;
+  --lt-warn-bg: #33250e;
+  --lt-bad: #ff8a80;
+  --lt-bad-bg: #3a1714;
+  --lt-header: #070d19;
+  --lt-on-header: #e7ecf5;
+  color-scheme: dark;
 }
 
 @theme inline {

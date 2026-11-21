@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { companyNameFor } from "@/lib/company";
 import { signOut } from "@/app/login/actions";
 import { CompanyNameEditor } from "./company-name-editor";
+import { ThemeToggle } from "./theme-toggle";
 
 /** Company name (with its rename pencil) and the signed-in username. */
 async function Who() {
@@ -40,11 +41,14 @@ export function BrokerShell({ active, children }: { active: (typeof tabs)[number
               <Who />
             </Suspense>
           </div>
-          <form action={signOut}>
-            <button type="submit" className="min-h-11 rounded-[10px] border border-white/30 px-3 text-[14px] font-semibold">
-              Log out
-            </button>
-          </form>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <form action={signOut}>
+              <button type="submit" className="min-h-11 rounded-[10px] border border-white/30 px-3 text-[14px] font-semibold">
+                Log out
+              </button>
+            </form>
+          </div>
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-5">

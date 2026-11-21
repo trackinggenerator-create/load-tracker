@@ -26,15 +26,21 @@ export function LiveTracker({ code, initial }: { code: string; initial: PublicLo
 
   return (
     <>
-      <section className={`${ui.card} flex flex-col gap-3 p-4`}>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="flex flex-col">
-            <h1 className="text-[22px] leading-tight font-black tabular-nums">Load {load.loadNumber}</h1>
-            {load.trailerNumber && <span className="text-[14px] text-muted tabular-nums">Trailer {load.trailerNumber}</span>}
-          </div>
-          <StatusChip load={load} />
+      {/*
+        Wide screens: load number | route (From/To/Delivery) | status, all on one row.
+        Phones: load number and status on top, route underneath.
+      */}
+      <section className={`${ui.card} flex flex-wrap items-start gap-x-8 gap-y-3 p-4`}>
+        <div className="flex flex-col">
+          <h1 className="text-[22px] leading-tight font-black tabular-nums">Load {load.loadNumber}</h1>
+          {load.trailerNumber && <span className="text-[14px] text-muted tabular-nums">Trailer {load.trailerNumber}</span>}
         </div>
-        <Route load={load} />
+        <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1">
+          <Route load={load} />
+        </div>
+        <span className="ml-auto">
+          <StatusChip load={load} />
+        </span>
       </section>
 
       <LocationDetails load={load} />
