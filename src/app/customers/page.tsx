@@ -7,6 +7,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { BrokerShell } from "@/components/broker-shell";
 import { ui } from "@/components/ui";
 import { CopyLink } from "../loads/copy-link";
+import { deleteCustomer } from "./actions";
+import { DeleteCustomerButton } from "./delete-customer-button";
 
 export const metadata: Metadata = { title: "My customers" };
 
@@ -16,10 +18,11 @@ type LoadRow = { customer_id: string | null; status: "active" | "delivered"; exp
 /** The page renders per request (it reads the login cookie), so checking the clock here is fine. */
 function countLoads(loads: LoadRow[]) {
   const now = Date.now();
-  const counts = new Map<string, { tracking: number; delivered: number }>();
+  const counts = new Map<string, { tracking: number; delivered: number; total: number }>();
   for (const l of loads) {
     if (!l.customer_id) continue;
-    const c = counts.get(l.customer_id) ?? { tracking: 0, delivered: 0 };
+    const c = counts.get(l.customer_id) ?? { tracking: 0, delivered: 0, total: 0 };
+    c.total++;
     if (l.status === "delivered") c.delivered++;
     else if (new Date(l.expires_at).getTime() >= now) c.tracking++;
     counts.set(l.customer_id, c);
@@ -53,7 +56,7 @@ async function CustomerList() {
   return (
     <ul className="flex flex-col gap-3">
       {sorted.map((c) => {
-        const n = counts.get(c.id) ?? { tracking: 0, delivered: 0 };
+        const n = counts.get(c.id) ?? { tracking: 0, delivered: 0, total: 0 };
         const link = `${origin}/c/${c.share_code}`;
         return (
           <li key={c.id} className={`${ui.card} flex flex-wrap items-center justify-between gap-3 p-4`}>
@@ -75,6 +78,7 @@ async function CustomerList() {
               <a href={link} target="_blank" rel="noopener noreferrer" className={ui.secondary}>
                 Open
               </a>
+              <DeleteCustomerButton action={deleteCustomer.bind(null, c.id)} name={c.name} loadCount={n.total} />
             </div>
           </li>
         );
