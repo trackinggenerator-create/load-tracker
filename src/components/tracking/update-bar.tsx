@@ -23,8 +23,11 @@ function mmss(ms: number): string {
 /** What a push hands back: how to show the new location, or a message if it couldn't get one. */
 export type PushResult = { show: () => void; error?: string };
 
-/** Idle, or a push in progress (`result` arrives when the carrier's page has been read). */
-type Phase = { name: "idle" } | { name: "pushing"; until: number; result: PushResult | null };
+/** Idle, a push counting down, or a push that just finished (with a problem, if there was one). */
+type Phase = { name: "idle" } | { name: "pushing"; until: number } | { name: "done"; at: number; error?: string };
+
+/** How long "Location updated" stays up after the new location appears. */
+const DONE_MESSAGE_MS = 6_000;
 
 const RefreshIcon = ({ spin = false }: { spin?: boolean }) => (
   <svg
@@ -46,7 +49,7 @@ const RefreshIcon = ({ spin = false }: { spin?: boolean }) => (
 
 /**
  * Push update: grabs a fresh location from the carrier's page. A short countdown runs while it
- * works; when it reaches 0 a Refresh button shows the new location.
+ * works; when it reaches 0 the new location appears on its own.
  * `pushAvailableAt` (customers only) greys the button out until another push is allowed.
  */
 export function UpdateBar({
@@ -68,49 +71,38 @@ export function UpdateBar({
     };
   }, []);
 
-  // The countdown is over and the new location has arrived: offer Refresh (or say what went wrong).
-  const finished = phase.name === "pushing" && phase.result && now >= phase.until ? phase.result : null;
-  const view = !finished ? phase.name : finished.error ? "idle" : "ready";
-  const note = finished?.error ?? null;
-
   async function start() {
     const until = Date.now() + PUSH_COUNTDOWN_MS;
-    setPhase({ name: "pushing", until, result: null });
+    setPhase({ name: "pushing", until });
     let result: PushResult;
     try {
       result = await push();
     } catch {
       result = { show: () => {}, error: "You seem to be offline. Try again in a moment." };
     }
-    if (alive.current) setPhase((p) => (p.name === "pushing" ? { ...p, result } : p));
+    // Hold the new location until the countdown ends, then show it on its own.
+    const wait = until - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    if (!alive.current) return;
+    if (!result.error) result.show();
+    setPhase({ name: "done", at: Date.now(), error: result.error });
   }
+
+  const note =
+    phase.name === "done"
+      ? phase.error
+        ? { text: phase.error, cls: "text-warn" }
+        : now - phase.at < DONE_MESSAGE_MS
+          ? { text: "Location updated just now.", cls: "text-ok" }
+          : null
+      : null;
 
   const waitPush = pushAvailableAt ? new Date(pushAvailableAt).getTime() - now : 0;
   const box = `flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[14px] ${
     tone === "card" ? "rounded-card border border-line bg-surface px-4 py-2.5" : ""
   }`;
 
-  if (view === "ready" && finished) {
-    return (
-      <div className={box}>
-        <span aria-live="polite" className="font-semibold text-ok">
-          New location is ready
-        </span>
-        <button
-          type="button"
-          onClick={() => {
-            finished.show();
-            setPhase({ name: "idle" });
-          }}
-          className="flex min-h-10 items-center gap-1.5 rounded-[10px] bg-accent px-3 text-[14px] font-bold text-on-accent"
-        >
-          <RefreshIcon /> Refresh
-        </button>
-      </div>
-    );
-  }
-
-  if (view === "pushing" && phase.name === "pushing") {
+  if (phase.name === "pushing") {
     const left = phase.until - now;
     return (
       <div className={box}>
@@ -133,13 +125,9 @@ export function UpdateBar({
 
   return (
     <div className={box}>
-      <span className="flex flex-col">
+      <span className="flex flex-col" aria-live="polite">
         <span className="text-muted">Location updates on its own every few minutes.</span>
-        {note && (
-          <span role="alert" className="text-[13px] font-semibold text-warn">
-            {note}
-          </span>
-        )}
+        {note && <span className={`text-[13px] font-semibold ${note.cls}`}>{note.text}</span>}
       </span>
       <button
         type="button"

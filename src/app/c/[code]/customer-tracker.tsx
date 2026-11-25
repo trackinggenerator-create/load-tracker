@@ -45,7 +45,7 @@ export function CustomerTracker({ code, initial }: { code: string; initial: Publ
     .sort()[0] ?? null;
   useRefetchWhenDue(soonest, refetch);
 
-  /** Push update for one load: the new location is held until the countdown ends and Refresh is pressed. */
+  /** Push update for one load: the new location is held until the countdown ends, then shown on its own. */
   async function push(key: string): Promise<PushResult> {
     const swap = (fresh: PublicLoad) => setLoads((prev) => prev.map((l) => (l.key === key ? fresh : l)));
     const res = await fetch(`/api/t/${key}`, { method: "POST", cache: "no-store" });

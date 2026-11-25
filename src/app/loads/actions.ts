@@ -174,7 +174,7 @@ async function ownLoad(id: string) {
 
 /**
  * The broker's Push update: reads the load's tracking link now (no limit). The card isn't redrawn
- * here; the countdown's Refresh button does that, so the new location shows when it says so.
+ * here; the countdown redraws it when it ends, so the new location shows right on time.
  */
 export async function refreshNow(id: string): Promise<{ error?: string }> {
   if (!(await ownLoad(id))) return { error: "That load wasn't found." };

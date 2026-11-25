@@ -29,7 +29,7 @@ export function LiveTracker({ code, initial }: { code: string; initial: PublicLo
   }, [every, refetch]);
   useRefetchWhenDue(load.nextUpdateAt, refetch);
 
-  /** Push update: the new location is held until the countdown ends and Refresh is pressed. */
+  /** Push update: the new location is held until the countdown ends, then shown on its own. */
   async function push(): Promise<PushResult> {
     const res = await fetch(`/api/t/${code}`, { method: "POST", cache: "no-store" });
     if (!res.ok) return { show: () => {}, error: "Couldn't get a newer location right now. Try again in a minute." };

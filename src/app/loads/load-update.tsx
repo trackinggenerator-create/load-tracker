@@ -6,8 +6,8 @@ import { UpdateBar, useRefetchWhenDue, type PushResult } from "@/components/trac
 import { refreshNow } from "./actions";
 
 /**
- * Push update for one load card (no limit for the broker): a short countdown, then Refresh redraws
- * the card with the new location. Behind the scenes it also picks up the automatic 5–10 minute updates.
+ * Push update for one load card (no limit for the broker): a short countdown, then the card redraws
+ * with the new location on its own. Behind the scenes it also picks up the automatic 5–10 minute updates.
  */
 export function LoadUpdate({ id, code, nextUpdateAt }: { id: string; code: string; nextUpdateAt: string }) {
   const router = useRouter();
