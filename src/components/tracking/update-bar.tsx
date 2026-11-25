@@ -59,7 +59,8 @@ export function UpdateBar({
 }: {
   push: () => Promise<PushResult>;
   pushAvailableAt?: string | null;
-  tone?: "card" | "plain";
+  /** "button": just the button (countdown shown on it), for tight spots like the dashboard card. */
+  tone?: "card" | "plain" | "button";
 }) {
   const now = useNow();
   const [phase, setPhase] = useState<Phase>({ name: "idle" });
@@ -98,6 +99,38 @@ export function UpdateBar({
       : null;
 
   const waitPush = pushAvailableAt ? new Date(pushAvailableAt).getTime() - now : 0;
+
+  if (tone === "button") {
+    const pushing = phase.name === "pushing";
+    const left = pushing ? phase.until - now : 0;
+    const justDone = note?.cls === "text-ok";
+    return (
+      <span className="flex flex-col items-end gap-1">
+        <button
+          type="button"
+          onClick={start}
+          disabled={pushing || waitPush > 0}
+          aria-live="polite"
+          className={`flex min-h-10 items-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 text-[14px] font-semibold tabular-nums disabled:cursor-default ${
+            pushing ? "text-accent" : justDone ? "text-ok" : "text-fg"
+          } ${waitPush > 0 && !pushing ? "opacity-60" : ""}`}
+        >
+          <RefreshIcon spin={pushing} />
+          {pushing
+            ? left > 0
+              ? `Updating ${mmss(left)}`
+              : "Almost there…"
+            : justDone
+              ? "Updated ✓"
+              : waitPush > 0
+                ? `Push again in ${mmss(waitPush)}`
+                : "Push update"}
+        </button>
+        {note && !justDone && <span className={`max-w-[16rem] text-right text-[13px] font-semibold ${note.cls}`}>{note.text}</span>}
+      </span>
+    );
+  }
+
   const box = `flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[14px] ${
     tone === "card" ? "rounded-card border border-line bg-surface px-4 py-2.5" : ""
   }`;

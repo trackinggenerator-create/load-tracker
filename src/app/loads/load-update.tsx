@@ -31,5 +31,5 @@ export function LoadUpdate({ id, code, nextUpdateAt }: { id: string; code: strin
     return { show: () => router.refresh() };
   }
 
-  return <UpdateBar tone="plain" push={push} />;
+  return <UpdateBar tone="button" push={push} />;
 }

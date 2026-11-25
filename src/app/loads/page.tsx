@@ -104,24 +104,23 @@ function LoadCard({ row, origin }: { row: Row; origin: string }) {
       )}
 
       {active && (
-        <div className="rounded-[10px] bg-surface-2 px-3 py-2.5 text-[14px]">
-          {row.last_position_at ? (
-            <>
-              <p className="font-semibold">{row.last_address ?? "Location found"}</p>
-              <p className="text-[13px] text-muted">
-                {row.last_speed_mph != null && row.last_speed_mph > 2 ? `Moving, ${row.last_speed_mph} mph` : "Stopped"} · GPS{" "}
-                <TimeAgo iso={row.last_position_at} />
-              </p>
-            </>
-          ) : (
-            <p className="text-muted">No location yet.</p>
-          )}
-          {row.last_error && <p className="mt-1 text-[13px] font-semibold text-bad">{row.last_error}</p>}
-          {!isExpired(row) && (
-            <div className="mt-2 border-t border-line pt-2">
-              <LoadUpdate id={row.id} code={row.share_code} nextUpdateAt={nextUpdateIso(row)} />
-            </div>
-          )}
+        // Location on the left, Push update on the right (it drops below on narrow phones).
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-[10px] bg-surface-2 px-3 py-2.5 text-[14px]">
+          <div className="min-w-0 flex-1">
+            {row.last_position_at ? (
+              <>
+                <p className="font-semibold">{row.last_address ?? "Location found"}</p>
+                <p className="text-[13px] text-muted">
+                  {row.last_speed_mph != null && row.last_speed_mph > 2 ? `Moving, ${row.last_speed_mph} mph` : "Stopped"} · GPS{" "}
+                  <TimeAgo iso={row.last_position_at} />
+                </p>
+              </>
+            ) : (
+              <p className="text-muted">No location yet.</p>
+            )}
+            {row.last_error && <p className="mt-1 text-[13px] font-semibold text-bad">{row.last_error}</p>}
+          </div>
+          {!isExpired(row) && <LoadUpdate id={row.id} code={row.share_code} nextUpdateAt={nextUpdateIso(row)} />}
         </div>
       )}
 
