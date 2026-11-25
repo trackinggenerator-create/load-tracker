@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { formatDay } from "@/lib/dates";
 import type { PublicLoad } from "@/lib/tracking";
 import type { FleetPin } from "@/components/tracking/fleet-map";
 import { LocationDetails, pollEvery, shortPlace, statusOf, StatusChip } from "@/components/tracking/load-parts";
 import { TimeAgo } from "@/components/time-ago";
+import { UpdateBar, useRefetchWhenDue } from "@/components/tracking/update-bar";
 import { ui } from "@/components/ui";
 import { Route } from "../../t/[code]/live-tracker";
 
@@ -22,19 +23,56 @@ export function CustomerTracker({ code, initial }: { code: string; initial: Publ
   const [open, setOpen] = useState<Set<string>>(() => new Set(initial.length === 1 ? [initial[0].key] : []));
   const [view, setView] = useState<"list" | "map">("list");
 
+  const [pushing, setPushing] = useState<Set<string>>(() => new Set());
+  const [notes, setNotes] = useState<Record<string, string>>({});
+
+  const refetch = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/c/${code}`, { cache: "no-store" });
+      if (res.ok) setLoads(((await res.json()) as { loads: PublicLoad[] }).loads);
+    } catch {
+      // Offline for a moment; try again next time.
+    }
+  }, [code]);
+
+  // Regular check every minute, plus right when the soonest countdown runs out.
   const every = pollEvery(loads);
   useEffect(() => {
     if (!every) return;
-    const t = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/c/${code}`, { cache: "no-store" });
-        if (res.ok) setLoads(((await res.json()) as { loads: PublicLoad[] }).loads);
-      } catch {
-        // Offline for a moment; try again next time.
-      }
-    }, every);
+    const t = setInterval(refetch, every);
     return () => clearInterval(t);
-  }, [code, every]);
+  }, [every, refetch]);
+  const soonest = loads
+    .map((l) => l.nextUpdateAt)
+    .filter((t): t is string => Boolean(t))
+    .sort()[0] ?? null;
+  useRefetchWhenDue(soonest, refetch);
+
+  /** Push update for one load: reads it now and swaps in the fresh data. */
+  async function push(key: string) {
+    setPushing((prev) => new Set(prev).add(key));
+    setNotes((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    try {
+      const res = await fetch(`/api/t/${key}`, { method: "POST", cache: "no-store" });
+      if (res.ok) {
+        const r = (await res.json()) as { load: PublicLoad; error?: string };
+        setLoads((prev) => prev.map((l) => (l.key === key ? r.load : l)));
+        if (r.error) setNotes((prev) => ({ ...prev, [key]: "Couldn't get a newer location right now. Showing the last one we have." }));
+      }
+    } catch {
+      setNotes((prev) => ({ ...prev, [key]: "You seem to be offline. Try again in a moment." }));
+    } finally {
+      setPushing((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
 
   const toggle = (key: string) =>
     setOpen((prev) => {
@@ -159,6 +197,14 @@ export function CustomerTracker({ code, initial }: { code: string; initial: Publ
                 </button>
                 {isOpen && canOpen && (
                   <div className="flex flex-col gap-3 border-t border-line p-4">
+                    <UpdateBar
+                      tone="plain"
+                      nextUpdateAt={l.nextUpdateAt}
+                      pushAvailableAt={l.pushAvailableAt}
+                      onPush={() => push(l.key)}
+                      pushing={pushing.has(l.key)}
+                      note={notes[l.key]}
+                    />
                     <Route load={l} />
                     <LocationDetails load={l} framed={false} />
                   </div>

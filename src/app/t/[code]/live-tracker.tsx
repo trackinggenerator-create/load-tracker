@@ -1,28 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatDay } from "@/lib/dates";
 import type { PublicLoad } from "@/lib/tracking";
 import { LocationDetails, pollEvery, StatusChip } from "@/components/tracking/load-parts";
+import { UpdateBar, useRefetchWhenDue } from "@/components/tracking/update-bar";
 import { ui } from "@/components/ui";
 
 /** The single-load tracking page. */
 export function LiveTracker({ code, initial }: { code: string; initial: PublicLoad }) {
   const [load, setLoad] = useState(initial);
+  const [pushing, setPushing] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
 
+  const refetch = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/t/${code}`, { cache: "no-store" });
+      if (res.ok) setLoad((await res.json()) as PublicLoad);
+    } catch {
+      // Offline for a moment; try again next time.
+    }
+  }, [code]);
+
+  // Regular check every minute, plus right when the countdown runs out.
   const every = pollEvery([load]);
   useEffect(() => {
     if (!every) return;
-    const t = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/t/${code}`, { cache: "no-store" });
-        if (res.ok) setLoad((await res.json()) as PublicLoad);
-      } catch {
-        // Offline for a moment; try again next time.
-      }
-    }, every);
+    const t = setInterval(refetch, every);
     return () => clearInterval(t);
-  }, [code, every]);
+  }, [every, refetch]);
+  useRefetchWhenDue(load.nextUpdateAt, refetch);
+
+  async function push() {
+    setPushing(true);
+    setNote(null);
+    try {
+      const res = await fetch(`/api/t/${code}`, { method: "POST", cache: "no-store" });
+      if (res.ok) {
+        const r = (await res.json()) as { load: PublicLoad; error?: string };
+        setLoad(r.load);
+        if (r.error) setNote("Couldn't get a newer location right now. Showing the last one we have.");
+      }
+    } catch {
+      setNote("You seem to be offline. Try again in a moment.");
+    } finally {
+      setPushing(false);
+    }
+  }
 
   return (
     <>
@@ -42,6 +66,8 @@ export function LiveTracker({ code, initial }: { code: string; initial: PublicLo
           <StatusChip load={load} />
         </span>
       </section>
+
+      <UpdateBar nextUpdateAt={load.nextUpdateAt} pushAvailableAt={load.pushAvailableAt} onPush={push} pushing={pushing} note={note} />
 
       <LocationDetails load={load} />
 

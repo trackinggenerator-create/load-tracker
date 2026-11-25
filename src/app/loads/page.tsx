@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { formatDay } from "@/lib/dates";
 import { linkOrigin } from "@/lib/origin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { nextCheckAt } from "@/lib/tracking";
 import { BrokerShell } from "@/components/broker-shell";
 import { TimeAgo } from "@/components/time-ago";
 import { ui } from "@/components/ui";
@@ -11,7 +12,8 @@ import { AddLoadForm } from "./add-load-form";
 import { CopyLink } from "./copy-link";
 import { DeleteButton } from "./delete-button";
 import { EditLoad } from "./edit-load";
-import { deleteLoad, refreshNow, setDelivered } from "./actions";
+import { deleteLoad, setDelivered } from "./actions";
+import { LoadUpdate } from "./load-update";
 
 export const metadata: Metadata = { title: "My loads" };
 // Adding a load opens the tracking link in a hidden browser, which can take a while.
@@ -41,6 +43,11 @@ type Row = {
 /** The page renders per request (it reads the login cookie), so checking the clock here is fine. */
 function isExpired(row: Row) {
   return row.status === "active" && new Date(row.expires_at).getTime() < Date.now();
+}
+
+/** When this load's next automatic location read is due (never in the past). */
+function nextUpdateIso(row: Row) {
+  return new Date(Math.max(nextCheckAt(row.id, row.last_checked_at), Date.now())).toISOString();
 }
 
 function Status({ row }: { row: Row }) {
@@ -110,6 +117,11 @@ function LoadCard({ row, origin }: { row: Row; origin: string }) {
             <p className="text-muted">No location yet.</p>
           )}
           {row.last_error && <p className="mt-1 text-[13px] font-semibold text-bad">{row.last_error}</p>}
+          {!isExpired(row) && (
+            <div className="mt-2 border-t border-line pt-2">
+              <LoadUpdate id={row.id} code={row.share_code} nextUpdateAt={nextUpdateIso(row)} />
+            </div>
+          )}
         </div>
       )}
 
@@ -118,11 +130,6 @@ function LoadCard({ row, origin }: { row: Row; origin: string }) {
         <a href={link} target="_blank" rel="noopener noreferrer" className={ui.secondary}>
           Open customer view
         </a>
-        {active && (
-          <form action={refreshNow.bind(null, row.id)}>
-            <button type="submit" className={ui.secondary}>Refresh</button>
-          </form>
-        )}
         <form action={setDelivered.bind(null, row.id, active)}>
           <button type="submit" className={ui.secondary}>{active ? "Mark delivered" : "Track again"}</button>
         </form>

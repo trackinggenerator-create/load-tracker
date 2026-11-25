@@ -27,6 +27,8 @@ async function Preview({ searchParams }: { searchParams: Promise<{ link?: string
     position: { lat: r.lat, lng: r.lng, heading: r.heading, moving: r.speedMph != null && r.speedMph > 2, address: r.address, at: r.positionAt },
     destination: r.destination,
     checkedAt: new Date().toISOString(),
+    nextUpdateAt: null,
+    pushAvailableAt: null,
   };
   return <LiveTracker code="preview" initial={{ ...load }} />;
 }

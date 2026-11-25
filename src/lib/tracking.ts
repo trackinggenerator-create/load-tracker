@@ -3,7 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readTrackingLink, TrackingLinkError } from "@/lib/trackers";
 
 /**
-^ * The tracking link is read again a random 5 to 10 minutes after the last read, and only while someone has a
+ * The tracking link is read again a random 5 to 10 minutes after the last read, and only while someone has a
  * tracking page open. The gap is picked from the load's id and the last read time, so it's the same
  * for every visitor (no extra database column needed) but different every time.
  */
@@ -19,6 +19,9 @@ function hashToUnit(text: string): number {
   }
   return (h >>> 0) / 0x100000000;
 }
+
+/** Customers can push a fresh read of a load at most this often (the broker has no limit). */
+export const PUSH_COOLDOWN_MS = 2 * 60 * 1000;
 
 export function nextCheckAt(id: string, checkedAt: string | null): number {
   if (!checkedAt) return 0;
@@ -40,6 +43,10 @@ export type PublicLoad = {
   destination: { name: string | null; address: string | null; lat: number | null; lng: number | null } | null;
   checkedAt: string | null;
   deliveredAt: string | null;
+  /** When the next automatic read is due (for the "Next update in 4:32" countdown). Null once not tracking. */
+  nextUpdateAt: string | null;
+  /** When a customer may press Push update again. */
+  pushAvailableAt: string | null;
 };
 
 type LoadRow = {
@@ -102,6 +109,8 @@ function toPublic(row: LoadRow): PublicLoad {
         : null,
     checkedAt: row.last_checked_at,
     deliveredAt: status === "delivered" ? row.delivered_at : null,
+    nextUpdateAt: live ? new Date(Math.max(nextCheckAt(row.id, row.last_checked_at), Date.now())).toISOString() : null,
+    pushAvailableAt: live && row.last_checked_at ? new Date(new Date(row.last_checked_at).getTime() + PUSH_COOLDOWN_MS).toISOString() : null,
   };
 }
 
@@ -163,21 +172,29 @@ export async function refreshLoadsInTurn(ids: string[]): Promise<void> {
 
 /**
  * Opens the load's tracking link (Samsara or Monarch) and saves the new position.
- * Unless `force` is set (the broker's Refresh button), it waits for the random 5 to 10 minute gap,
- * and marks the load as being checked first so two visitors at once don't both open it.
+ * - default: waits for the random 5 to 10 minute gap (automatic updates)
+ * - cooldownMs: reads now unless it was read within that time (a customer's Push update)
+ * - force: reads now no matter what (the broker's Push update)
+ * It marks the load as being checked first so two visitors at once don't both open the link.
  */
-export async function refreshLoad(id: string, { force = false } = {}): Promise<{ ok: boolean; error?: string }> {
+export async function refreshLoad(
+  id: string,
+  { force = false, cooldownMs }: { force?: boolean; cooldownMs?: number } = {},
+): Promise<{ ok: boolean; error?: string; skipped?: boolean }> {
   const db = createSupabaseAdminClient();
   const now = new Date().toISOString();
   let claim = db.from("loads").update({ last_checked_at: now }).eq("id", id).eq("status", "active");
-  if (!force) {
+  if (cooldownMs != null) {
+    const cutoff = new Date(Date.now() - cooldownMs).toISOString();
+    claim = claim.or(`last_checked_at.is.null,last_checked_at.lt."${cutoff}"`);
+  } else if (!force) {
     const { data: current } = await db.from("loads").select("last_checked_at").eq("id", id).maybeSingle<{ last_checked_at: string | null }>();
     if (!current || !isStale(id, current.last_checked_at)) return { ok: true };
     // Only claim it if nobody else has checked it since we looked.
     claim = current.last_checked_at ? claim.eq("last_checked_at", current.last_checked_at) : claim.is("last_checked_at", null);
   }
   const { data: claimed } = await claim.select("samsara_url").maybeSingle<{ samsara_url: string }>();
-  if (!claimed) return { ok: true }; // Someone else just checked it, or it's no longer active.
+  if (!claimed) return { ok: true, skipped: true }; // Read moments ago, or no longer active.
 
   try {
     const r = await readTrackingLink(claimed.samsara_url);
@@ -205,4 +222,17 @@ export async function refreshLoad(id: string, { force = false } = {}): Promise<{
     await db.from("loads").update({ last_error: message }).eq("id", id);
     return { ok: false, error: message };
   }
+}
+
+/**
+ * A customer's Push update: reads the load now, unless it was read in the last 2 minutes.
+ * Returns the load's latest safe data either way, or null for codes that don't exist.
+ */
+export async function pushPublicLoad(code: string): Promise<{ load: PublicLoad; pushed: boolean; error?: string } | null> {
+  const found = await getPublicLoad(code);
+  if (!found) return null;
+  if (found.load.status !== "active") return { load: found.load, pushed: false };
+  const result = await refreshLoad(found.id, { cooldownMs: PUSH_COOLDOWN_MS });
+  const latest = await getPublicLoad(code);
+  return { load: (latest ?? found).load, pushed: !result.skipped, error: result.ok ? undefined : result.error };
 }
