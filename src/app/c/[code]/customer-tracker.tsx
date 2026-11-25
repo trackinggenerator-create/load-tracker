@@ -7,7 +7,7 @@ import type { PublicLoad } from "@/lib/tracking";
 import type { FleetPin } from "@/components/tracking/fleet-map";
 import { LocationDetails, pollEvery, shortPlace, statusOf, StatusChip } from "@/components/tracking/load-parts";
 import { TimeAgo } from "@/components/time-ago";
-import { UpdateBar, useRefetchWhenDue } from "@/components/tracking/update-bar";
+import { UpdateBar, useRefetchWhenDue, type PushResult } from "@/components/tracking/update-bar";
 import { ui } from "@/components/ui";
 import { Route } from "../../t/[code]/live-tracker";
 
@@ -23,9 +23,6 @@ export function CustomerTracker({ code, initial }: { code: string; initial: Publ
   const [open, setOpen] = useState<Set<string>>(() => new Set(initial.length === 1 ? [initial[0].key] : []));
   const [view, setView] = useState<"list" | "map">("list");
 
-  const [pushing, setPushing] = useState<Set<string>>(() => new Set());
-  const [notes, setNotes] = useState<Record<string, string>>({});
-
   const refetch = useCallback(async () => {
     try {
       const res = await fetch(`/api/c/${code}`, { cache: "no-store" });
@@ -35,7 +32,7 @@ export function CustomerTracker({ code, initial }: { code: string; initial: Publ
     }
   }, [code]);
 
-  // Regular check every minute, plus right when the soonest countdown runs out.
+  // Behind the scenes: check every minute, plus right when the soonest automatic update is due.
   const every = pollEvery(loads);
   useEffect(() => {
     if (!every) return;
@@ -48,30 +45,17 @@ export function CustomerTracker({ code, initial }: { code: string; initial: Publ
     .sort()[0] ?? null;
   useRefetchWhenDue(soonest, refetch);
 
-  /** Push update for one load: reads it now and swaps in the fresh data. */
-  async function push(key: string) {
-    setPushing((prev) => new Set(prev).add(key));
-    setNotes((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-    try {
-      const res = await fetch(`/api/t/${key}`, { method: "POST", cache: "no-store" });
-      if (res.ok) {
-        const r = (await res.json()) as { load: PublicLoad; error?: string };
-        setLoads((prev) => prev.map((l) => (l.key === key ? r.load : l)));
-        if (r.error) setNotes((prev) => ({ ...prev, [key]: "Couldn't get a newer location right now. Showing the last one we have." }));
-      }
-    } catch {
-      setNotes((prev) => ({ ...prev, [key]: "You seem to be offline. Try again in a moment." }));
-    } finally {
-      setPushing((prev) => {
-        const next = new Set(prev);
-        next.delete(key);
-        return next;
-      });
+  /** Push update for one load: the new location is held until the countdown ends and Refresh is pressed. */
+  async function push(key: string): Promise<PushResult> {
+    const swap = (fresh: PublicLoad) => setLoads((prev) => prev.map((l) => (l.key === key ? fresh : l)));
+    const res = await fetch(`/api/t/${key}`, { method: "POST", cache: "no-store" });
+    if (!res.ok) return { show: () => {}, error: "Couldn't get a newer location right now. Try again in a minute." };
+    const r = (await res.json()) as { load: PublicLoad; error?: string };
+    if (r.error) {
+      swap(r.load);
+      return { show: () => {}, error: "Couldn't get a newer location right now. Showing the last one we have." };
     }
+    return { show: () => swap(r.load) };
   }
 
   const toggle = (key: string) =>
@@ -197,14 +181,7 @@ export function CustomerTracker({ code, initial }: { code: string; initial: Publ
                 </button>
                 {isOpen && canOpen && (
                   <div className="flex flex-col gap-3 border-t border-line p-4">
-                    <UpdateBar
-                      tone="plain"
-                      nextUpdateAt={l.nextUpdateAt}
-                      pushAvailableAt={l.pushAvailableAt}
-                      onPush={() => push(l.key)}
-                      pushing={pushing.has(l.key)}
-                      note={notes[l.key]}
-                    />
+                    <UpdateBar tone="plain" push={() => push(l.key)} pushAvailableAt={l.pushAvailableAt} />
                     <Route load={l} />
                     <LocationDetails load={l} framed={false} />
                   </div>

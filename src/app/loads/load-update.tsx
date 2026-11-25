@@ -1,17 +1,16 @@
 "use client";
 
-import { useCallback, useTransition } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { UpdateBar, useRefetchWhenDue } from "@/components/tracking/update-bar";
+import { UpdateBar, useRefetchWhenDue, type PushResult } from "@/components/tracking/update-bar";
 import { refreshNow } from "./actions";
 
 /**
- * The broker's countdown and Push update for one load card. When the countdown ends it asks for
- * the new location (same as a customer's page would) and redraws the card. Push update has no limit.
+ * Push update for one load card (no limit for the broker): a short countdown, then Refresh redraws
+ * the card with the new location. Behind the scenes it also picks up the automatic 5–10 minute updates.
  */
 export function LoadUpdate({ id, code, nextUpdateAt }: { id: string; code: string; nextUpdateAt: string }) {
   const router = useRouter();
-  const [pushing, startPush] = useTransition();
 
   const refetch = useCallback(async () => {
     try {
@@ -23,5 +22,14 @@ export function LoadUpdate({ id, code, nextUpdateAt }: { id: string; code: strin
   }, [code, router]);
   useRefetchWhenDue(nextUpdateAt, refetch);
 
-  return <UpdateBar tone="plain" nextUpdateAt={nextUpdateAt} onPush={() => startPush(() => refreshNow(id))} pushing={pushing} />;
+  async function push(): Promise<PushResult> {
+    const r = await refreshNow(id);
+    if (r.error) {
+      router.refresh(); // show the problem on the card
+      return { show: () => {}, error: r.error };
+    }
+    return { show: () => router.refresh() };
+  }
+
+  return <UpdateBar tone="plain" push={push} />;
 }

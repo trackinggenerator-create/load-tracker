@@ -172,10 +172,14 @@ async function ownLoad(id: string) {
   return data ? supabase : null;
 }
 
-export async function refreshNow(id: string) {
-  if (!(await ownLoad(id))) return;
-  await refreshLoad(id, { force: true });
-  refresh();
+/**
+ * The broker's Push update: reads the load's tracking link now (no limit). The card isn't redrawn
+ * here; the countdown's Refresh button does that, so the new location shows when it says so.
+ */
+export async function refreshNow(id: string): Promise<{ error?: string }> {
+  if (!(await ownLoad(id))) return { error: "That load wasn't found." };
+  const result = await refreshLoad(id, { force: true });
+  return result.ok ? {} : { error: result.error };
 }
 
 export async function setDelivered(id: string, delivered: boolean) {
